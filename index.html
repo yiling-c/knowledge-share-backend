@@ -1,0 +1,1104 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞书卡片预览 - 听音审美知识专栏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 主专栏卡片样式 */
+        .main-card {
+            border-left: 5px solid #667eea;
+        }
+
+        .main-card .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .main-card h1 {
+            font-size: 28px;
+            color: #1f2937;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .main-card .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .intro-section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 3px solid #667eea;
+        }
+
+        .intro-section h3 {
+            font-size: 16px;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .intro-section p {
+            color: #6b7280;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .points-section {
+            margin: 24px 0;
+        }
+
+        .points-section h3 {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .points-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .points-section li {
+            padding: 12px 0 12px 32px;
+            color: #374151;
+            font-size: 15px;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .points-section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .media-section {
+            background: #f3f4f6;
+            padding: 60px 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 24px 0;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .media-section:before {
+            content: "🎵";
+            display: block;
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .comment-section {
+            background: #fef3c7;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-top: 24px;
+            border: 1px solid #fcd34d;
+        }
+
+        .comment-section p {
+            color: #92400e;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .comment-input-wrapper {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .comment-section input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .comment-submit-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .comment-submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .comment-submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .comment-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .comments-list {
+            margin-top: 24px;
+        }
+
+        .comments-list-title {
+            font-size: 16px;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comment-count {
+            color: #6b7280;
+            font-weight: normal;
+            font-size: 14px;
+        }
+
+        .comment-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+
+        .comment-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .comment-user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .comment-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .comment-user-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+        }
+
+        .comment-time {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        .comment-content {
+            color: #374151;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .like-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .like-btn:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .like-btn.liked {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #ef4444;
+        }
+
+        .like-btn.liked:hover {
+            background: #fee2e2;
+        }
+
+        .like-icon {
+            font-size: 16px;
+        }
+
+        .empty-comments {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        /* 微知识卡片样式 */
+        .micro-card {
+            border-left: 5px solid #10b981;
+        }
+
+        .micro-card .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .micro-card h2 {
+            font-size: 24px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .micro-card .theme {
+            color: #059669;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .knowledge-section {
+            background: #ecfdf5;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 3px solid #10b981;
+        }
+
+        .knowledge-section h3 {
+            font-size: 16px;
+            color: #065f46;
+            margin-bottom: 12px;
+        }
+
+        .knowledge-section p {
+            color: #047857;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .quiz-section {
+            margin: 24px 0;
+        }
+
+        .quiz-section h3 {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .quiz-question {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .quiz-question p {
+            color: #374151;
+            font-size: 15px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            padding: 14px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .option:hover {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .option.correct {
+            border-color: #10b981;
+            background: #d1fae5;
+        }
+
+        .option.wrong {
+            border-color: #ef4444;
+            background: #fee2e2;
+        }
+
+        .option .check {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .option .retry {
+            color: #ef4444;
+            font-size: 12px;
+        }
+
+        /* 登录模态框样式 */
+        .login-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-modal.active {
+            display: flex;
+        }
+
+        .login-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .login-modal-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-modal-header h2 {
+            font-size: 28px;
+            color: #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .login-modal-header p {
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        .login-form-group {
+            margin-bottom: 24px;
+        }
+
+        .login-form-group label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .login-form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .login-form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-form-group input.error {
+            border-color: #ef4444;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .login-submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-tips {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f0f9ff;
+            border-radius: 12px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .login-tips p {
+            color: #1e40af;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* 用户信息显示 */
+        .user-info-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-info-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 15px;
+        }
+
+        .user-info-badge {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .logout-btn {
+            padding: 8px 20px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            color: #6b7280;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 640px) {
+            body {
+                padding: 20px 10px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .main-card h1 {
+                font-size: 22px;
+            }
+
+            .micro-card h2 {
+                font-size: 20px;
+            }
+
+            .login-modal-content {
+                padding: 30px 24px;
+            }
+
+            .user-info-bar {
+                padding: 12px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录模态框 -->
+    <div class="login-modal active" id="loginModal">
+        <div class="login-modal-content">
+            <div class="login-modal-header">
+                <h2>欢迎来到听音审美知识专栏</h2>
+                <p>请输入您的飞书账号名字，开始实名答题获取积分</p>
+            </div>
+            <form id="loginForm">
+                <div class="login-form-group">
+                    <label for="userName">飞书账号名字 *</label>
+                    <input
+                        type="text"
+                        id="userName"
+                        name="userName"
+                        placeholder="请输入您的飞书账号名字"
+                        required
+                        autocomplete="name"
+                    >
+                    <div class="error-message" id="userNameError">请输入有效的名字（至少2个字符）</div>
+                </div>
+                <button type="submit" class="login-submit-btn" id="loginSubmitBtn">
+                    开始使用
+                </button>
+                <div class="login-tips">
+                    <p>提示：您的名字将用于评论和答题记录，确保积分正确统计</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 用户信息栏 -->
+    <div class="user-info-bar" id="userInfoBar" style="display: none;">
+        <div class="user-info-left">
+            <div class="user-info-avatar" id="userAvatar">张</div>
+            <div class="user-info-text">
+                <div class="user-info-name" id="userDisplayName">张明德</div>
+                <div class="user-info-badge">实名认证用户</div>
+            </div>
+        </div>
+        <button class="logout-btn" id="logoutBtn">退出登录</button>
+    </div>
+
+    <div class="container">
+        <!-- 微知识卡片（周度） -->
+        <div class="card micro-card">
+            <span class="badge">每周微知识</span>
+            <h2>听音微知识｜第1周</h2>
+            <p class="theme">主题：重放声压级</p>
+
+            <div class="knowledge-section">
+                <h3>核心知识</h3>
+                <p>重放声压级是音频领域的核心参数，指经过耳机或音箱等设备重放后，在人耳位置测得的声音强度，单位为分贝（dB）。它不是原始声源的声压级，而是音频信号经设备放大、转换后的输出强度。声压级是以人耳能听到的最小声压为基准计算的对数值。85dB是长时间聆听的安全阈值，超过这个强度可能损伤听力；而120dB已接近痛觉阈值，会造成即时伤害。专业监听通常控制在75-85dB，既保证听感准确，又保护听力健康。</p>
+            </div>
+
+            <div class="quiz-section">
+                <h3>互动问题</h3>
+                <div class="quiz-question">
+                    <p>在小房间录音时，使用较长的混响时间会产生什么效果？</p>
+                    <div class="quiz-options" id="quizOptions">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置 ====================
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        // ==================== 工具函数 ====================
+
+        // 获取用户名首字
+        function getFirstChar(name) {
+            return name.charAt(0);
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            alert(message);
+        }
+
+        // ==================== 用户管理功能 ====================
+
+        // 用户信息对象
+        let currentUser = {
+            name: '',
+            id: ''
+        };
+
+        // 从 localStorage 加载用户信息
+        function loadUserFromStorage() {
+            const savedUser = localStorage.getItem('feishu_user');
+            if (savedUser) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    return true;
+                } catch (e) {
+                    console.error('解析用户信息失败:', e);
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        // 保存用户信息到 localStorage
+        function saveUserToStorage(userName) {
+            currentUser = {
+                name: userName,
+                id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            };
+            localStorage.setItem('feishu_user', JSON.stringify(currentUser));
+        }
+
+        // 清除用户信息
+        function clearUserFromStorage() {
+            localStorage.removeItem('feishu_user');
+            currentUser = {
+                name: '',
+                id: ''
+            };
+        }
+
+        // 验证用户名
+        function validateUserName(name) {
+            const trimmedName = name.trim();
+            if (trimmedName.length < 2) {
+                return { valid: false, message: '请输入有效的名字（至少2个字符）' };
+            }
+            if (trimmedName.length > 20) {
+                return { valid: false, message: '名字不能超过20个字符' };
+            }
+            return { valid: true, message: '' };
+        }
+
+        // 显示用户信息栏
+        function showUserInfo() {
+            const userInfoBar = document.getElementById('userInfoBar');
+            const userAvatar = document.getElementById('userAvatar');
+            const userDisplayName = document.getElementById('userDisplayName');
+
+            userAvatar.textContent = getFirstChar(currentUser.name);
+            userDisplayName.textContent = currentUser.name;
+            userInfoBar.style.display = 'flex';
+        }
+
+        // 隐藏用户信息栏
+        function hideUserInfo() {
+            const userInfoBar = document.getElementById('userInfoBar');
+            userInfoBar.style.display = 'none';
+        }
+
+        // 显示登录模态框
+        function showLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.classList.add('active');
+        }
+
+        // 隐藏登录模态框
+        function hideLoginModal() {
+            const modal = document.getElementById('loginModal');
+            modal.classList.remove('active');
+        }
+
+        // 处理登录表单提交
+        function handleLogin(event) {
+            event.preventDefault();
+
+            const userNameInput = document.getElementById('userName');
+            const errorMessage = document.getElementById('userNameError');
+            const submitBtn = document.getElementById('loginSubmitBtn');
+            const userName = userNameInput.value.trim();
+
+            // 验证用户名
+            const validation = validateUserName(userName);
+
+            if (!validation.valid) {
+                userNameInput.classList.add('error');
+                errorMessage.textContent = validation.message;
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            // 清除错误状态
+            userNameInput.classList.remove('error');
+            errorMessage.classList.remove('show');
+
+            // 禁用按钮
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+
+            // 保存用户信息
+            saveUserToStorage(userName);
+
+            // 模拟登录延迟
+            setTimeout(() => {
+                // 隐藏登录模态框
+                hideLoginModal();
+
+                // 显示用户信息栏
+                showUserInfo();
+
+                // 显示欢迎消息
+                showNotification(`欢迎，${currentUser.name}！`);
+
+                // 重置按钮状态
+                submitBtn.disabled = false;
+                submitBtn.textContent = '开始使用';
+
+                // 清空输入框
+                userNameInput.value = '';
+
+                // 加载内容
+                loadQuiz();
+            }, 500);
+        }
+
+        // 处理退出登录
+        function handleLogout() {
+            if (confirm('确定要退出登录吗？')) {
+                // 清除用户信息
+                clearUserFromStorage();
+
+                // 隐藏用户信息栏
+                hideUserInfo();
+
+                // 显示登录模态框
+                showLoginModal();
+            }
+        }
+
+        // ==================== 互动问题功能 ====================
+
+        // 检查用户是否已答题
+        function hasUserAnsweredQuiz(quizId) {
+            const key = `quiz_${quizId}_${currentUser.id}`;
+            return localStorage.getItem(key) !== null;
+        }
+
+        // 保存用户答题记录
+        function saveUserQuizAnswer(quizId, selectedOption, isCorrect) {
+            const key = `quiz_${quizId}_${currentUser.id}`;
+            const data = {
+                selectedOption: selectedOption,
+                isCorrect: isCorrect,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        // 获取用户答题记录
+        function getUserQuizAnswer(quizId) {
+            const key = `quiz_${quizId}_${currentUser.id}`;
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        }
+
+        // 加载问题
+        async function loadQuiz() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/quizzes/quiz_1`);
+                if (!response.ok) throw new Error('加载问题失败');
+
+                const quiz = await response.json();
+                renderQuiz(quiz);
+            } catch (error) {
+                console.error('加载问题失败:', error);
+                document.getElementById('quizOptions').innerHTML =
+                    '<div class="empty-comments">加载失败，请刷新重试</div>';
+            }
+        }
+
+        // 渲染问题
+        function renderQuiz(quiz) {
+            const container = document.getElementById('quizOptions');
+            container.innerHTML = '';
+
+            // 检查用户是否已经答过这道题
+            const hasAnswered = hasUserAnsweredQuiz(quiz.id);
+            const previousAnswer = getUserQuizAnswer(quiz.id);
+
+            if (hasAnswered && previousAnswer) {
+                // 显示已答题的状态
+                quiz.options.forEach(option => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'option';
+                    optionElement.dataset.label = option.label;
+                    optionElement.style.cursor = 'not-allowed';
+                    optionElement.style.opacity = '0.7';
+
+                    // 如果是用户之前选择的选项，显示结果
+                    if (option.label === previousAnswer.selectedOption) {
+                        if (previousAnswer.isCorrect) {
+                            optionElement.classList.add('correct');
+                            optionElement.innerHTML = `
+                                <span>${option.label}. ${option.text}</span>
+                                <span class="feedback"><span class="check">✓ 正确（已完成）</span></span>
+                            `;
+                        } else {
+                            optionElement.classList.add('wrong');
+                            optionElement.innerHTML = `
+                                <span>${option.label}. ${option.text}</span>
+                                <span class="feedback"><span class="retry">✗ 错误（已完成）</span></span>
+                            `;
+                        }
+                    } else {
+                        optionElement.innerHTML = `
+                            <span>${option.label}. ${option.text}</span>
+                            <span class="feedback"></span>
+                        `;
+                    }
+
+                    container.appendChild(optionElement);
+                });
+
+                // 添加提示信息
+                const tipElement = document.createElement('div');
+                tipElement.style.cssText = 'margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; color: #92400e; font-size: 14px; text-align: center;';
+                tipElement.textContent = '您已完成本题答题，每人只能答题一次';
+                container.appendChild(tipElement);
+
+            } else {
+                // 允许答题
+                quiz.options.forEach(option => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'option';
+                    optionElement.dataset.label = option.label;
+
+                    optionElement.innerHTML = `
+                        <span>${option.label}. ${option.text}</span>
+                        <span class="feedback"></span>
+                    `;
+
+                    optionElement.addEventListener('click', () => submitQuizAnswer(quiz.id, option.label));
+                    container.appendChild(optionElement);
+                });
+            }
+        }
+
+        // 提交答案
+        async function submitQuizAnswer(quizId, selectedOption) {
+            // 检查是否已经答过题
+            if (hasUserAnsweredQuiz(quizId)) {
+                showNotification('您已经完成本题答题，每人只能答题一次', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/quizzes/answer`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        quizId: quizId,
+                        selectedOption: selectedOption,
+                        userName: currentUser.name,
+                        userId: currentUser.id
+                    })
+                });
+
+                if (!response.ok) throw new Error('提交失败');
+
+                const result = await response.json();
+
+                // 保存用户答题记录
+                saveUserQuizAnswer(quizId, selectedOption, result.isCorrect);
+
+                // 显示答题结果
+                displayQuizResult(selectedOption, result);
+
+                // 2秒后重新渲染问题，显示已完成状态
+                setTimeout(() => {
+                    loadQuiz();
+                }, 2000);
+
+            } catch (error) {
+                console.error('提交答案失败:', error);
+                showNotification('提交失败，请重试', 'error');
+            }
+        }
+
+        // 显示答题结果
+        function displayQuizResult(selectedOption, result) {
+            const options = document.querySelectorAll('.option');
+
+            // 移除所有选项的点击事件
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+                opt.classList.remove('correct', 'wrong');
+                opt.querySelector('.feedback').innerHTML = '';
+            });
+
+            // 标记选中的选项
+            const selectedElement = document.querySelector(`[data-label="${selectedOption}"]`);
+
+            if (result.isCorrect) {
+                selectedElement.classList.add('correct');
+                selectedElement.querySelector('.feedback').innerHTML = '<span class="check">✓ 正确！+10分</span>';
+                showNotification('回答正确！获得8积分', 'success');
+            } else {
+                selectedElement.classList.add('wrong');
+                selectedElement.querySelector('.feedback').innerHTML = '<span class="retry">✗ 错误</span>';
+                showNotification('回答错误，答案已记录', 'error');
+            }
+        }
+
+        // ==================== 初始化 ====================
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 绑定登录表单提交事件
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', handleLogin);
+
+            // 绑定退出登录按钮
+            const logoutBtn = document.getElementById('logoutBtn');
+            logoutBtn.addEventListener('click', handleLogout);
+
+            // 检查是否已经登录
+            if (loadUserFromStorage()) {
+                // 已登录，隐藏登录模态框，显示用户信息
+                hideLoginModal();
+                showUserInfo();
+
+                // 加载内容
+                loadQuiz();
+            } else {
+                // 未登录，显示登录模态框
+                showLoginModal();
+            }
+        });
+    </script>
+</body>
+</html>
