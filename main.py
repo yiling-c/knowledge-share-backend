@@ -1,15 +1,35 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from contextlib import asynccontextmanager
 import uuid
 import os
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
-app = FastAPI(title="听音审美知识专栏 API", version="1.0.0")
+# 导入数据库配置
+from database import get_db, init_db, QuizRecord, UserScore, QuizStat
+
+# 使用 lifespan 管理启动和关闭事件
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时初始化数据库
+    init_db()
+    print("数据库已初始化")
+    yield
+    # 关闭时的清理工作（如果需要）
+    print("应用关闭")
+
+app = FastAPI(
+    title="听音审美知识专栏 API",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS 配置 - 允许前端访问
 app.add_middleware(
@@ -74,12 +94,12 @@ comments_db: List[Comment] = []
 quizzes_db = {
     "quiz_1": Quiz(
         id="quiz_1",
-        question="在小房间录音时，使用较长的混响时间会产生什么效果？",
+        question="在进行日常听音训练或混音练习时，为什么建议将重放声压级控制在 75–85 dB 之间？",
         options=[
-            QuizOption(label="A", text="让声音更干净清晰", isCorrect=False),
-            QuizOption(label="B", text="声音会显得浑浊模糊", isCorrect=True),
-            QuizOption(label="C", text="增强低频表现", isCorrect=False),
-            QuizOption(label="D", text="提高音量响度", isCorrect=False),
+            QuizOption(label="A", text="因为这个声压级既能保持听觉敏感度，又能防止听力疲劳", isCorrect=True),
+            QuizOption(label="B", text="因为声音越大越容易听清细节", isCorrect=False),
+            QuizOption(label="C", text="因为小音量下听不出差别", isCorrect=False),
+            QuizOption(label="D", text="因为这个范围最接近日常真实聆听环境，能帮助培养自然听感", isCorrect=False),
         ]
     )
 }
@@ -158,8 +178,8 @@ async def get_all_quizzes():
     return list(quizzes_db.values())
 
 @app.post("/api/quizzes/answer", response_model=QuizResult)
-async def submit_answer(answer: QuizAnswer):
-    """提交答案并返回结果"""
+async def submit_answer(answer: QuizAnswer, db: Session = Depends(get_db)):
+    """提交答案并返回结果（使用数据库存储）"""
     quiz = quizzes_db.get(answer.quizId)
 
     if not quiz:
@@ -173,50 +193,62 @@ async def submit_answer(answer: QuizAnswer):
         raise HTTPException(status_code=400, detail="无效的选项")
 
     is_correct = selected_option.isCorrect
+    message = "回答正确！" if is_correct else "回答错误，重新试试吧"
 
-    # 记录问题统计
-    if answer.quizId not in quiz_stats:
-        quiz_stats[answer.quizId] = {"correct": 0, "wrong": 0}
-
-    if is_correct:
-        quiz_stats[answer.quizId]["correct"] += 1
-        message = "回答正确！"
-    else:
-        quiz_stats[answer.quizId]["wrong"] += 1
-        message = "回答错误，重新试试吧"
-
-    # 记录用户答题记录
+    # 记录用户答题记录到数据库
     if answer.userName and answer.userId:
-        # 初始化用户积分
-        if answer.userName not in user_scores:
-            user_scores[answer.userName] = {
-                "correct": 0,
-                "wrong": 0,
-                "score": 0,
-                "userId": answer.userId
-            }
+        # 1. 保存答题记录
+        quiz_record = QuizRecord(
+            quiz_id=answer.quizId,
+            user_id=answer.userId,
+            user_name=answer.userName,
+            selected_option=answer.selectedOption,
+            is_correct=is_correct
+        )
+        db.add(quiz_record)
 
-        # 更新用户积分
-        if is_correct:
-            user_scores[answer.userName]["correct"] += 1
-            user_scores[answer.userName]["score"] += 10  # 正确+10分
+        # 2. 更新或创建用户积分
+        user_score = db.query(UserScore).filter(UserScore.user_name == answer.userName).first()
+
+        if not user_score:
+            # 创建新用户积分记录
+            user_score = UserScore(
+                user_name=answer.userName,
+                correct_count=1 if is_correct else 0,
+                wrong_count=0 if is_correct else 1,
+                total_score=8 if is_correct else 0
+            )
+            db.add(user_score)
         else:
-            user_scores[answer.userName]["wrong"] += 1
+            # 更新现有用户积分
+            if is_correct:
+                user_score.correct_count += 1
+                user_score.total_score += 8
+            else:
+                user_score.wrong_count += 1
 
-        # 记录详细答题记录
-        if answer.userId not in user_quiz_records:
-            user_quiz_records[answer.userId] = {}
+        # 3. 更新问题统计
+        quiz_stat = db.query(QuizStat).filter(QuizStat.quiz_id == answer.quizId).first()
 
-        if answer.quizId not in user_quiz_records[answer.userId]:
-            user_quiz_records[answer.userId][answer.quizId] = []
+        if not quiz_stat:
+            # 创建新问题统计记录
+            quiz_stat = QuizStat(
+                quiz_id=answer.quizId,
+                correct_count=1 if is_correct else 0,
+                wrong_count=0 if is_correct else 1,
+                total_count=1
+            )
+            db.add(quiz_stat)
+        else:
+            # 更新现有问题统计
+            if is_correct:
+                quiz_stat.correct_count += 1
+            else:
+                quiz_stat.wrong_count += 1
+            quiz_stat.total_count += 1
 
-        user_quiz_records[answer.userId][answer.quizId].append({
-            "userName": answer.userName,
-            "selectedOption": answer.selectedOption,
-            "isCorrect": is_correct,
-            "time": format_time(),
-            "timestamp": datetime.now().isoformat()
-        })
+        # 提交所有更改
+        db.commit()
 
     return QuizResult(
         isCorrect=is_correct,
@@ -240,39 +272,40 @@ async def get_quiz_stats(quiz_id: str):
 # ==================== 数据统计 API ====================
 
 @app.get("/api/stats/users")
-async def get_user_stats():
-    """获取所有用户积分排行"""
-    # 按积分排序
-    sorted_users = sorted(
-        user_scores.items(),
-        key=lambda x: x[1]["score"],
-        reverse=True
-    )
+async def get_user_stats(db: Session = Depends(get_db)):
+    """获取所有用户积分排行（从数据库读取）"""
+    # 从数据库查询，按积分排序
+    users = db.query(UserScore).order_by(UserScore.total_score.desc()).all()
 
     result = []
-    for rank, (userName, stats) in enumerate(sorted_users, 1):
+    for rank, user in enumerate(users, 1):
+        total = user.correct_count + user.wrong_count
+        accuracy = round(user.correct_count / total * 100, 2) if total > 0 else 0
+
         result.append({
             "rank": rank,
-            "userName": userName,
-            "score": stats["score"],
-            "correct": stats["correct"],
-            "wrong": stats["wrong"],
-            "total": stats["correct"] + stats["wrong"],
-            "accuracy": round(stats["correct"] / (stats["correct"] + stats["wrong"]) * 100, 2)
-                if (stats["correct"] + stats["wrong"]) > 0 else 0
+            "userName": user.user_name,
+            "score": user.total_score,
+            "correct": user.correct_count,
+            "wrong": user.wrong_count,
+            "total": total,
+            "accuracy": accuracy
         })
 
     return result
 
 @app.get("/api/stats/overview")
-async def get_overview_stats():
-    """获取总体数据统计"""
-    total_users = len(user_scores)
-    total_comments = len(comments_db)
+async def get_overview_stats(db: Session = Depends(get_db)):
+    """获取总体数据统计（从数据库读取）"""
+    # 统计用户数
+    total_users = db.query(func.count(UserScore.id)).scalar()
 
-    # 计算总答题数
-    total_answers = sum(stats["correct"] + stats["wrong"] for stats in quiz_stats.values())
-    total_correct = sum(stats["correct"] for stats in quiz_stats.values())
+    # 统计答题记录
+    total_answers = db.query(func.count(QuizRecord.id)).scalar()
+    total_correct = db.query(func.count(QuizRecord.id)).filter(QuizRecord.is_correct == True).scalar()
+
+    # 评论数（仍使用内存）
+    total_comments = len(comments_db)
 
     return {
         "totalUsers": total_users,
@@ -304,31 +337,28 @@ async def get_comment_stats():
     ]
 
 @app.get("/api/stats/quiz-records")
-async def get_all_quiz_records():
-    """获取所有答题记录"""
+async def get_all_quiz_records(db: Session = Depends(get_db)):
+    """获取所有答题记录（从数据库读取）"""
+    # 从数据库查询，按时间倒序
+    records = db.query(QuizRecord).order_by(QuizRecord.answered_at.desc()).all()
+
     all_records = []
-
-    for userId, quizzes in user_quiz_records.items():
-        for quizId, records in quizzes.items():
-            for record in records:
-                all_records.append({
-                    "userName": record["userName"],
-                    "quizId": quizId,
-                    "selectedOption": record["selectedOption"],
-                    "isCorrect": record["isCorrect"],
-                    "time": record["time"],
-                    "timestamp": record["timestamp"]
-                })
-
-    # 按时间倒序排列
-    all_records.sort(key=lambda x: x["timestamp"], reverse=True)
+    for record in records:
+        all_records.append({
+            "userName": record.user_name,
+            "quizId": record.quiz_id,
+            "selectedOption": record.selected_option,
+            "isCorrect": record.is_correct,
+            "time": record.answered_at.strftime("%H:%M"),
+            "timestamp": record.answered_at.isoformat()
+        })
 
     return all_records
 
 # ==================== Excel导出功能 ====================
 
-def export_quiz_records_to_excel():
-    """导出答题记录到Excel文件"""
+def export_quiz_records_to_excel(db: Session):
+    """导出答题记录到Excel文件（从数据库读取）"""
     # 确保答题情况目录存在（云端使用临时目录）
     export_dir = os.path.join(os.getcwd(), "答题情况")
     os.makedirs(export_dir, exist_ok=True)
@@ -370,22 +400,19 @@ def export_quiz_records_to_excel():
         cell.alignment = header_alignment
         cell.border = border
 
-    # 获取所有答题记录
-    all_records = []
-    for userId, quizzes in user_quiz_records.items():
-        for quizId, records in quizzes.items():
-            for record in records:
-                all_records.append({
-                    "userName": record["userName"],
-                    "quizId": quizId,
-                    "selectedOption": record["selectedOption"],
-                    "isCorrect": record["isCorrect"],
-                    "time": record["time"],
-                    "timestamp": record["timestamp"]
-                })
+    # 从数据库获取所有答题记录，按时间倒序
+    records = db.query(QuizRecord).order_by(QuizRecord.answered_at.desc()).all()
 
-    # 按时间倒序排列
-    all_records.sort(key=lambda x: x["timestamp"], reverse=True)
+    all_records = []
+    for record in records:
+        all_records.append({
+            "userName": record.user_name,
+            "quizId": record.quiz_id,
+            "selectedOption": record.selected_option,
+            "isCorrect": record.is_correct,
+            "time": record.answered_at.strftime("%H:%M"),
+            "timestamp": record.answered_at.isoformat()
+        })
 
     # 写入数据
     for idx, record in enumerate(all_records, 2):
@@ -444,10 +471,10 @@ def export_quiz_records_to_excel():
     return filepath
 
 @app.get("/api/export/quiz-records")
-async def export_quiz_records():
+async def export_quiz_records(db: Session = Depends(get_db)):
     """导出答题记录为Excel文件"""
     try:
-        filepath = export_quiz_records_to_excel()
+        filepath = export_quiz_records_to_excel(db)
         filename = os.path.basename(filepath)
 
         return FileResponse(
@@ -459,13 +486,15 @@ async def export_quiz_records():
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
 
 @app.post("/api/export/auto-save")
-async def auto_save_quiz_records():
+async def auto_save_quiz_records(db: Session = Depends(get_db)):
     """自动保存答题记录到Excel（每次答题后调用）"""
     try:
-        if len(user_quiz_records) == 0:
+        # 检查数据库中是否有记录
+        count = db.query(func.count(QuizRecord.id)).scalar()
+        if count == 0:
             return {"success": False, "message": "暂无答题记录"}
 
-        filepath = export_quiz_records_to_excel()
+        filepath = export_quiz_records_to_excel(db)
         return {
             "success": True,
             "message": "答题记录已保存",
